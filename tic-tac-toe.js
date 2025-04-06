@@ -1,3 +1,19 @@
+const gameBoard = document.querySelector(".gameBoard");
+const cells = document.querySelectorAll(".cell");
+const gameInfo = document.querySelector("#game-info");
+const resetBtn = document.querySelector("#reset-button");
+
+cells.forEach((cell) => {
+  cell.addEventListener("click", () => {
+    const index = cell.id;
+    gameboard.setMark(index, nextPlayer[1]);
+    cell.textContent = nextPlayer[1];
+    gameInfo.textContent = gameBoard.checkWinner();
+  });
+});
+
+// LOGIC //
+
 const Gameboard = function () {
   let board = Array(9).fill(null);
 
