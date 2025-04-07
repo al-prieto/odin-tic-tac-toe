@@ -1,16 +1,7 @@
-const gameBoard = document.querySelector(".gameBoard");
+const gameBoard = document.querySelector(".gameboard");
 const cells = document.querySelectorAll(".cell");
 const gameInfo = document.querySelector("#game-info");
 const resetBtn = document.querySelector("#reset-button");
-
-cells.forEach((cell) => {
-  cell.addEventListener("click", () => {
-    const index = cell.id;
-    gameboard.setMark(index, nextPlayer[1]);
-    cell.textContent = nextPlayer[1];
-    gameInfo.textContent = gameBoard.checkWinner();
-  });
-});
 
 // LOGIC //
 
@@ -18,6 +9,7 @@ const Gameboard = function () {
   let board = Array(9).fill(null);
 
   const getBoard = () => board;
+
   const setMark = (index, marker) => {
     if (board[index] !== null) {
       console.log("Invalid move. The cell is already occupied.");
@@ -42,16 +34,19 @@ const Gameboard = function () {
     for (let combo of winningCombinations) {
       const [a, b, c] = combo;
       if (board[a] !== null && board[a] === board[b] && board[a] === board[c]) {
-        return board[a];
+        return { winner: board[a], combo: combo };
       }
     }
     if (!board.includes(null)) {
-      return "Draw";
+      return { winner: "Draw", combo: null };
     }
-    return null;
+    return { winner: null, combo: null };
   };
 
-  return { getBoard, setMark, checkWinner };
+  const resetBoard = () => {
+    board = Array(9).fill(null);
+  };
+  return { getBoard, setMark, checkWinner, resetBoard };
 };
 
 function createPlayer(name, mark) {
@@ -61,48 +56,111 @@ function createPlayer(name, mark) {
 const gameboard = Gameboard();
 const player1 = createPlayer("Player 1", "X");
 const player2 = createPlayer("Player 2", "O");
-
 let nextPlayer = player1;
+let gameActive = true;
 
 const Gameflow = (function () {
   const alternatePlayer = function () {
     nextPlayer = nextPlayer === player1 ? player2 : player1;
   };
-  return { alternate: alternatePlayer };
-})();
 
-const Gameplay = (function () {
-  while (true) {
-    let index;
-    let input;
+  const initGame = function () {
+    gameActive = true;
+    gameInfo.textContent = `Turn of ${nextPlayer.name} (${nextPlayer.mark})`;
+    gameBoard.classList.remove("game-over");
+  };
 
-    do {
-      input = prompt("Enter a number between 0 and 8");
-      index = Number(input);
-    } while (isNaN(index) || index < 0 || index > 8 || input === null);
-
-    console.log("Selected Number:", index);
+  const playTurn = function (index, cell) {
+    if (!gameActive) return false;
 
     if (gameboard.setMark(index, nextPlayer.mark)) {
-      console.log("Valid move! Next turn:");
-      console.log("Current Board:", gameboard.getBoard());
-      Gameflow.alternate();
-      console.log(`Next Player: ${nextPlayer.name}`);
+      cell.textContent = nextPlayer.mark;
+      cell.classList.add(nextPlayer.mark);
 
-      const result = gameboard.checkWinner(gameboard.getBoard());
-      if (result === "Draw") {
-        console.log("It's a draw! Game over.");
-        break;
-      } else if (result !== null) {
-        console.log(`Player ${result} wins! Game over.`);
-        break;
+      const result = gameboard.checkWinner();
+
+      if (result.winner === "Draw") {
+        gameInfo.textContent = "Draw!";
+        gameActive = false;
+        gameBoard.classList.add("game-over");
+      } else if (result.winner !== null) {
+        gameInfo.textContent = `${nextPlayer.name} win!`;
+        gameActive = false;
+        gameBoard.classList.add("game-over");
+
+        if (result.combo) {
+          result.combo.forEach((i) => {
+            document.querySelector(`#cell-${i}`).classList.add("winner");
+          });
+        }
       } else {
-        console.log("Game continues...");
-        console.log("Current Board:", gameboard.getBoard());
-        console.log(`Next Player: ${nextPlayer.name}`);
+        alternatePlayer();
+        gameInfo.textContent = `Turn of ${nextPlayer.name}`;
       }
-    } else {
-      console.log("Invalid movement. Try again.");
+      return true;
     }
-  }
+    return false;
+  };
+
+  const resetGame = function () {
+    gameboard.resetBoard();
+    gameActive = true;
+    nextPlayer = player1;
+
+    cells.forEach((cell) => {
+      cell.textContent = "";
+      cell.classList.remove("X", "O", "winner");
+    });
+
+    gameBoard.classList.remove("game-over");
+    gameInfo.textContent = `Turn of ${nextPlayer.name} (${nextPlayer.mark})`;
+  };
+
+  return {
+    alternate: alternatePlayer,
+    init: initGame,
+    playTurn: playTurn,
+    reset: resetGame,
+  };
 })();
+
+document.addEventListener("DOMContentLoaded", () => {
+  Gameflow.init();
+
+  cells.forEach((cell) => {
+    cell.addEventListener("click", () => {
+      const index = cell.id.split("-")[1];
+      Gameflow.playTurn(index, cell);
+    });
+  });
+
+  resetBtn.addEventListener("click", Gameflow.reset);
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+  const startGameBtn = document.querySelector("#start-game");
+  const player1Input = document.querySelector("#player1-name");
+  const player2Input = document.querySelector("#player2-name");
+
+  // Configurar el evento de inicio del juego
+  startGameBtn.addEventListener("click", () => {
+    // Asignar nombres ingresados a los jugadores
+    const player1Name = player1Input.value.trim() || "Jugador 1";
+    const player2Name = player2Input.value.trim() || "Jugador 2";
+
+    player1.name = player1Name;
+    player2.name = player2Name;
+
+    // Mostrar quién inicia el juego
+    gameInfo.textContent = `Turno de ${nextPlayer.name} (${nextPlayer.mark})`;
+
+    // Ocultar la configuración inicial
+    document.querySelector("#player-setup").style.display = "none";
+
+    // Mostrar el tablero de juego
+    gameBoard.style.display = "grid";
+  });
+
+  // Inicializar el juego
+  Gameflow.init();
+});
